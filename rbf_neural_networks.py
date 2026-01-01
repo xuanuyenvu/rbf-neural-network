@@ -32,9 +32,14 @@ class RBFNeuralNetwork:
         self.centers = kmeans.cluster_centers_
 
     def train_output_weights_gd(self, y, Phi):    
-        if (self.y_onehot is None) or (self.y_onehot.shape[0] != y.shape[0]):
+        if (self.encoder is None) or (self.y_onehot.shape[0] != y.shape[0]):
             self.encoder = OneHotEncoder(sparse_output=False)
             self.y_onehot = self.encoder.fit_transform(y.reshape(-1, 1))  
+            
+        if (self.encoder is None):
+            print("Warning: OneHotEncoder is not initialized.")
+        else:
+            print("OneHotEncoder is initialized.")
 
         N, M = Phi.shape
         C = self.y_onehot.shape[1]
