@@ -12,6 +12,7 @@ class RBFNeuralNetwork:
         self.weights = None
         self.beta = None
         
+        self.encoder = None
         self.y_onehot = None
 
 
@@ -32,8 +33,8 @@ class RBFNeuralNetwork:
 
     def train_output_weights_gd(self, y, Phi):    
         if (self.y_onehot is None) or (self.y_onehot.shape[0] != y.shape[0]):
-            encoder = OneHotEncoder(sparse_output=False)
-            self.y_onehot = encoder.fit_transform(y.reshape(-1, 1))  
+            self.encoder = OneHotEncoder(sparse_output=False)
+            self.y_onehot = self.encoder.fit_transform(y.reshape(-1, 1))  
 
         N, M = Phi.shape
         C = self.y_onehot.shape[1]
