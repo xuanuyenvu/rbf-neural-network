@@ -1,9 +1,13 @@
 import numpy as np
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import OneHotEncoder
+from sklearn.metrics import precision_recall_curve, PrecisionRecallDisplay
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+from sklearn.metrics import roc_curve, RocCurveDisplay
+import matplotlib.pyplot as plt
 
 class RBFNeuralNetwork:
-    def __init__(self, num_centers, learning_rate=0.01, epochs=100, ):
+    def __init__(self, num_centers, learning_rate=0.01, epochs=100):
         self.num_centers = num_centers
         self.learning_rate = learning_rate
         self.epochs = epochs
@@ -32,14 +36,9 @@ class RBFNeuralNetwork:
         self.centers = kmeans.cluster_centers_
 
     def train_output_weights_gd(self, y, Phi):    
-        if (self.encoder is None) or (self.y_onehot.shape[0] != y.shape[0]):
+        if (self.encoder is None) or (self.y_onehot is None) or (self.y_onehot.shape[0] != y.shape[0]):
             self.encoder = OneHotEncoder(sparse_output=False)
             self.y_onehot = self.encoder.fit_transform(y.reshape(-1, 1))  
-            
-        if (self.encoder is None):
-            print("Warning: OneHotEncoder is not initialized.")
-        else:
-            print("OneHotEncoder is initialized.")
 
         N, M = Phi.shape
         C = self.y_onehot.shape[1]
@@ -74,3 +73,115 @@ class RBFNeuralNetwork:
         y_pred = Phi @ self.weights
 
         return np.argmax(y_pred, axis=1)
+    
+
+class RBFExperiment:
+    def __init__(self, data_name, num_centers, X_train, y_train,X_test, y_test, learning_rate=0.01, epochs=100):
+        self.data_name = data_name
+        self.model = RBFNeuralNetwork(num_centers=num_centers, 
+                                      learning_rate=learning_rate, 
+                                      epochs=epochs)
+        
+        self.X_train = X_train
+        self.y_train = y_train
+        self.X_test = X_test
+        self.y_test = y_test
+        
+        self.y_pred = None
+        self.y_scores = None
+        self.y_test_onehot = None
+
+    def train(self):
+        self.model.fit(self.X_train, self.y_train)
+
+    def predict(self):
+        self.y_pred = self.model.predict(self.X_test)
+    
+    def calculate_scores(self):
+        Phi_test = self.model.compute_activations(self.X_test)
+        self.y_scores = Phi_test @ self.model.weights
+    
+    def calculate_y_test_onehot(self):
+        self.y_test_onehot = self.model.encoder.transform(self.y_test.reshape(-1, 1))
+        
+    def accuracy(self):
+        overall_acc = np.mean(self.y_pred == self.y_test)
+        
+        class_acc = {}
+        classes = np.unique(self.y_test)
+        for c in classes:
+            cls_acc = np.mean(self.y_pred[self.y_test == c] == self.y_test[self.y_test == c])
+            class_acc[c] = cls_acc
+        return overall_acc, class_acc
+    
+    def plot_precision_recall_multiclass(self):
+        if self.y_scores is None:
+            self.calculate_scores()
+        if self.y_test_onehot is None:
+            self.calculate_y_test_onehot()
+        
+        plt.figure(figsize=(8, 6))
+
+        n_classes = self.y_scores.shape[1]
+        for i in range(n_classes):
+            precision, recall, _ = precision_recall_curve(
+                self.y_test_onehot[:, i],
+                self.y_scores[:, i]
+            )
+
+            disp = PrecisionRecallDisplay(
+                precision=precision,
+                recall=recall
+            )
+            disp.plot(ax=plt.gca(), label=f'Class {i}')
+
+        plt.title("Precision-Recall Curve for " + self.data_name)
+        plt.xlabel('Recall')
+        plt.ylabel('Precision')
+        plt.legend()
+        plt.grid(True)
+        plt.show()
+
+    
+    def plot_roc_multiclass(self):
+        if self.y_scores is None:
+            self.calculate_scores()
+        if self.y_test_onehot is None:
+            self.calculate_y_test_onehot()
+        
+        plt.figure(figsize=(8, 6))
+
+        n_classes = self.y_scores.shape[1]
+        for i in range(n_classes):
+            fpr, tpr, _ = roc_curve(
+                self.y_test_onehot[:, i],
+                self.y_scores[:, i]
+            )
+
+            disp = RocCurveDisplay(fpr=fpr, tpr=tpr)
+            disp.plot(
+                ax=plt.gca(),
+                curve_kwargs={"label": f"Class {i}"}
+            )
+
+        plt.title("ROC Curve for " + self.data_name)
+        plt.xlabel("False Positive Rate")
+        plt.ylabel("True Positive Rate")
+        plt.legend()
+        plt.grid(True)
+        plt.show()
+
+    
+    def plot_confusion_matrix(self):
+        labels = np.unique(self.y_test)
+        cm = confusion_matrix(self.y_test, self.y_pred, labels=labels)
+
+        disp = ConfusionMatrixDisplay(
+            confusion_matrix=cm,
+            display_labels=labels
+        )
+
+        disp.plot(cmap=plt.cm.Blues)
+        plt.title("Confusion Matrix for " + self.data_name)
+        plt.grid(False)
+        plt.show()
