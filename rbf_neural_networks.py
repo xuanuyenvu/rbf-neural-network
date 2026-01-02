@@ -65,8 +65,7 @@ class RBFNeuralNetwork:
         Phi = self.compute_activations(X)
 
         # Step 4: Initialize weights
-        self.weights = self.train_output_weights_gd(y, Phi) 
-        print("weights:", self.weights)  
+        self.weights = self.train_output_weights_gd(y, Phi)
 
     def predict(self, X):
         Phi = self.compute_activations(X)
@@ -104,7 +103,7 @@ class RBFExperiment:
     def calculate_y_test_onehot(self):
         self.y_test_onehot = self.model.encoder.transform(self.y_test.reshape(-1, 1))
         
-    def accuracy(self):
+    def test_accuracy(self):
         overall_acc = np.mean(self.y_pred == self.y_test)
         
         class_acc = {}
@@ -113,6 +112,19 @@ class RBFExperiment:
             cls_acc = np.mean(self.y_pred[self.y_test == c] == self.y_test[self.y_test == c])
             class_acc[c] = cls_acc
         return overall_acc, class_acc
+    
+    def train_accuracy(self):
+        y_pred_train = self.model.predict(self.X_train)
+        
+        overall_acc = np.mean(y_pred_train == self.y_train)
+        
+        class_acc = {}
+        classes = np.unique(self.y_train)
+        for c in classes:
+            cls_acc = np.mean(y_pred_train[self.y_train == c] == self.y_train[self.y_train == c])
+            class_acc[c] = cls_acc
+        return overall_acc, class_acc
+
     
     def plot_precision_recall_multiclass(self):
         if self.y_scores is None:
@@ -133,11 +145,11 @@ class RBFExperiment:
                 precision=precision,
                 recall=recall
             )
-            disp.plot(ax=plt.gca(), label=f'Class {i}')
+            disp.plot(ax=plt.gca(), label=f'Classe {i}')
 
-        plt.title("Precision-Recall Curve for " + self.data_name)
-        plt.xlabel('Recall')
-        plt.ylabel('Precision')
+        plt.title("Courbe Précision-Rappel pour " + self.data_name)
+        plt.xlabel("Rappel")
+        plt.ylabel("Précision")
         plt.legend()
         plt.grid(True)
         plt.show()
@@ -161,12 +173,12 @@ class RBFExperiment:
             disp = RocCurveDisplay(fpr=fpr, tpr=tpr)
             disp.plot(
                 ax=plt.gca(),
-                curve_kwargs={"label": f"Class {i}"}
+                curve_kwargs={"label": f"Classe {i}"}
             )
 
-        plt.title("ROC Curve for " + self.data_name)
-        plt.xlabel("False Positive Rate")
-        plt.ylabel("True Positive Rate")
+        plt.title("Courbe ROC pour " + self.data_name)
+        plt.xlabel("Taux de Faux Positifs")
+        plt.ylabel("Taux de Vrais Positifs")
         plt.legend()
         plt.grid(True)
         plt.show()
@@ -178,10 +190,12 @@ class RBFExperiment:
 
         disp = ConfusionMatrixDisplay(
             confusion_matrix=cm,
-            display_labels=labels
+            display_labels=[f"Classe {l}" for l in labels] 
         )
 
         disp.plot(cmap=plt.cm.Blues)
-        plt.title("Confusion Matrix for " + self.data_name)
+        plt.title("Matrice de Confusion pour " + self.data_name)
+        plt.xlabel("Étiquette prédite")
+        plt.ylabel("Étiquette réelle")
         plt.grid(False)
         plt.show()
